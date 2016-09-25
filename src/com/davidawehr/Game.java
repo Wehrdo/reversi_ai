@@ -12,6 +12,11 @@ public class Game {
             positions = poss;
         }
 
+        // Heuristic of how "good" the board is for black
+        double heuristic() {
+            return Long.bitCount(positions[0]) - Long.bitCount(positions[1]);
+        }
+
         @Override
         public String toString() {
             StringBuilder out = new StringBuilder();
@@ -34,8 +39,8 @@ public class Game {
 
     class Move {
         final Board resultBoard;
-        final byte placement;
-        Move(Board b, byte p) {
+        final int placement;
+        Move(Board b, int p) {
             resultBoard = b;
             placement = p;
         }
@@ -59,20 +64,26 @@ public class Game {
             if ( ((myPieces | theirPieces) & (1L << i)) != 0) {
                 continue;
             }
-            //
+
+
+            long theirNew = theirPieces;
+            long myNew = myPieces;
+            boolean validMove = false;
+
             for (byte checkDir : checkDirections) {
-                byte compareWith = (byte) (i + checkDir);
-                // While within the board bounds and the neighboring piece is the opponent
-                byte flipLength = 0;
-                while (compareWith >= 0 && compareWith < 64 && ((1L << compareWith) & theirPieces) != 0) {
+                int compareWith = i + checkDir;
+                int flipLength = 0;
+                while (compareWith >= 0 && compareWith < 64 &&      // Within the board limits
+                        ((1L << compareWith) & theirPieces) != 0 && // The opponent has a piece there
+                        ((1L << compareWith) & myPieces) == 0) {    // I don't have a piece there
                     flipLength += 1;
                     compareWith += checkDir;
                 }
-                long compareMask = (1 << compareWith);
+
+                long compareMask = (1L << compareWith);
                 // Valid move
-                if (flipLength > 0 && (compareMask & theirPieces) == 0 && (compareMask & myPieces) == 0 && compareWith >= 0 && compareWith < 64) {
-                    long theirNew = theirPieces;
-                    long myNew = myPieces;
+                if (flipLength > 0 && (compareMask & myPieces) != 0 && compareWith >= 0 && compareWith < 64) {
+                    validMove = true;
                     int f, c;
                     for (f = i+checkDir, c = 0; c < flipLength; c += 1, f += checkDir) {
                         // Remove opponent's piece
@@ -80,12 +91,15 @@ public class Game {
                         // Add my piece
                         myNew |= (1L << f);
                     }
-                    // Add the newly placed piece
-                    myNew |= (1L << f);
-                    long[] resultPositions = new long[] {0,0};
-                    resultPositions[who] = myNew; resultPositions[1-who] = theirNew;
-                    moves.add(new Move(new Board(resultPositions), compareWith));
                 }
+            }
+
+            if (validMove) {
+                // Add the newly placed piece
+                myNew |= (1L << i);
+                long[] resultPositions = new long[] {0,0};
+                resultPositions[who] = myNew; resultPositions[1-who] = theirNew;
+                moves.add(new Move(new Board(resultPositions), i));
             }
         }
 
