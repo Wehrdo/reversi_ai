@@ -6,7 +6,8 @@ import java.util.ArrayList;
  * Created by dawehr on 9/24/2016.
  */
 public class Game {
-    private class Board {
+
+    static class Board {
         final long[] positions;
         Board(long[] poss) {
             positions = poss;
@@ -37,7 +38,7 @@ public class Game {
         }
     }
 
-    class Move {
+    static class Move {
         final Board resultBoard;
         final int placement;
         Move(Board b, int p) {
@@ -52,7 +53,7 @@ public class Game {
     }
 
     // who: 0 if it is black's move, 1 if it is white's move
-    public ArrayList<Move> possibleActions(Board curBoard, int who) {
+    static ArrayList<Move> possibleActions(Board curBoard, int who) {
         long myPieces = curBoard.positions[who];
         long theirPieces = curBoard.positions[1-who];
 
@@ -65,7 +66,6 @@ public class Game {
                 continue;
             }
 
-
             long theirNew = theirPieces;
             long myNew = myPieces;
             boolean validMove = false;
@@ -75,7 +75,9 @@ public class Game {
                 int flipLength = 0;
                 while (compareWith >= 0 && compareWith < 64 &&      // Within the board limits
                         ((1L << compareWith) & theirPieces) != 0 && // The opponent has a piece there
-                        ((1L << compareWith) & myPieces) == 0) {    // I don't have a piece there
+                        ((1L << compareWith) & myPieces) == 0 &&    // I don't have a piece there
+                        ((compareWith & 7) != 0) &&                 // Not a multiple of eight (left edge)
+                        (((compareWith+1) & 7) != 0)) {             // One less is not a multiple of eight (right edge)
                     flipLength += 1;
                     compareWith += checkDir;
                 }
