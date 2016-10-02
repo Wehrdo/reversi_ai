@@ -19,4 +19,9 @@
       </profile>
     </annotationProcessing>
   </component>
+  <component name="HaskellBuildOptions">
+    <ghcPath>C:\Program Files\Haskell Platform\8.0.1\bin\ghc.exe</ghcPath>
+    <cabalPath>C:\Program Files\Haskell Platform\8.0.1\lib\extralibs\bin\cabal.exe</cabalPath>
+    <stackPath>C:\Users\dawehr\AppData\Roaming\local\bin\stack.exe</stackPath>
+  </component>
 </project>
