@@ -10,7 +10,7 @@ public class Game {
 
     public Board board;
     public Game() {
-        board = new Board(new long[]{0x0000001008000000L, 0x0000000810000000L});
+        board = new Board(0x0000001008000000L, 0x0000000810000000L);
     }
 
 }

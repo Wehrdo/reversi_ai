@@ -7,14 +7,18 @@ import java.util.ArrayList;
 
 
 public class Board {
+    // Holds the black and white board positions
+    // positions[0] is the black pieces, positions[1] is the white pieces
+    // The board is numbered 0-63, starting from the upper-right, and increasing left to right
+    // Bit i is 1 if there is a piece there for the respective player. i is increasing as bit significance increases
+    // Therefore, if black has position 0...0101, then it would have pieces in the upper-left corner and in column 3, top row
     final long[] positions;
-    int whoSearching;
 
-    public void setWho(int who) {
-        whoSearching = who;
-    }
-
+    // Directions to check for possible moves. Corresponds to all directions (up, right, left, upper-right, etc.)
     private static final byte[] checkDirections = {7, 8, 9, -1, 1, -9, -8, -7};
+    // A table lookup for how many rows should be changed for a particular direction. This could be computed, but it
+    // is probably faster with an array index. Because the checkDirections go negative, the index is offset by 9
+    // The nines are just dummies, meaning it is not used
     private static final byte[] rowChanges = {
             -1, -1, -1,   // indices 0-2 (maps -9, -8, -7)
             9, 9, 9, 9, 9, // indices 3-7
@@ -23,28 +27,30 @@ public class Board {
             1, 1, 1 // indices 16-18 (maps (7, 8, 9)
     };
 
+    // Weights for all board positions
     private static final byte[] weights = {
-            32, 5, 10, 5, 5, 10, 5, 32,
-            5, -2, -3, -3, -3, -3 ,-2, 5,
-            10, -3, 2, 1, 1, 2, -3, 10,
-            5, -3, 1, 1, 1, 1, -3, 5,
-            5, -3, 1, 1, 1, 1, -3, 5,
-            10, -3, 2, 1, 1, 2, 3, 10,
-            5, -2, -3, -3, -3, -3, -2, 5,
-            32, 5, 10, 5, 5, 10, 5, 32
+            6, 1, 3, 3, 3, 3, 1, 6,
+            1, -2, 3, 3, 3, 3 ,-2, 1,
+            3, 3, 2, 3, 3, 2, 3, 3,
+            4, 2, 2, 2, 2, 2, 2, 4,
+            4, 2, 2, 2, 2, 2, 2, 4,
+            3, 3, 2, 3, 3, 1, 3, 3,
+            1, -2, 3, 3, 3, 3 ,-2, 1,
+            6, 1, 3, 3, 3, 3, 1, 6,
     };
 
-    Board(long[] poss) {
-        positions = poss;
+    Board(long blackPositions, long whitePositions) {
+        positions = new long[] {blackPositions, whitePositions};
     }
 
     Board() {
-        this(new long[] {0x0000001008000000L, 0x0000000810000000L});
+        this(0x0000001008000000L, 0x0000000810000000L);
     }
 
     // Heuristic of how "good" the board is for black
-    int heuristic() {
-        if (whoSearching == 0) {
+    int heuristic(boolean weighted) {
+        // weighted version takes into account the strength of different squares
+        if (weighted) {
             long blackPositions = positions[0];
             long whitePositions = positions[1];
             int blackScore = 0;
@@ -56,6 +62,7 @@ public class Board {
             }
             return blackScore - whiteScore;
         }
+        // non-weighted version just takes actual board score
         else {
             return Long.bitCount(positions[0]) - Long.bitCount(positions[1]);
         }
@@ -86,7 +93,10 @@ public class Board {
     }
 
 
-    // who: 0 if it is black's move, 1 if it is white's move
+    /*
+    Returns a list of the possible moves that can be made from the current board position
+    who: 0 if it is black's move, 1 if it is white's move
+     */
     ArrayList<Move> possibleActions(int who) {
         long myPieces = positions[who];
         long theirPieces = positions[1-who];
@@ -103,6 +113,7 @@ public class Board {
             long myNew = myPieces;
             boolean validMove = false;
 
+            // Check for potential moves in every direction
             for (byte checkDir : checkDirections) {
                 int compareWith = i + checkDir;
                 int flipLength = 0;
@@ -113,6 +124,9 @@ public class Board {
                     compareWith += checkDir;
                 }
 
+                // Expected rows is the number of rows that should be flipped by this move
+                // Actual rows is the number fo rows that actually were flipped by this move
+                // If actual and expected don't match, then the move wrapped around the edge, and it is an invalid move
                 int expectedRows = rowChanges[checkDir+9] * (flipLength+1);
                 int actualRows = (compareWith >> 3) - (i >> 3); // compareWith/3 - i/3
                 long compareMask = (1L << compareWith);
@@ -134,13 +148,14 @@ public class Board {
                 myNew |= (1L << i);
                 long[] resultPositions = new long[] {0,0};
                 resultPositions[who] = myNew; resultPositions[1-who] = theirNew;
-                moves.add(new Move(new Board(resultPositions), i));
+                moves.add(new Move(new Board(resultPositions[0], resultPositions[1]), i));
             }
         }
-
         return moves;
     }
 
+    // Verify the given location is a valid move for "who", and if so, make the moves
+    // Returns whether it was a valid move
     boolean placePiece(int loc, int who) {
         long myPieces = positions[who];
         long theirPieces = positions[1-who];
@@ -191,12 +206,16 @@ public class Board {
     }
 
 
-    class Move {
+    class Move implements Comparable<Move> {
         final Board resultBoard;
         final int placement;
         Move(Board b, int p) {
             resultBoard = b;
             placement = p;
+        }
+        public int compareTo(Move other) {
+            // Use the non-weighted to sort, since it is faster
+            return Integer.compare(this.resultBoard.heuristic(false), other.resultBoard.heuristic(false));
         }
     }
 }
